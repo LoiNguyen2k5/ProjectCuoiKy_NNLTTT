@@ -3,10 +3,20 @@ package com.example.cosmetic.view.main;
 import com.example.cosmetic.model.entity.Staff;
 import com.example.cosmetic.model.enums.StaffRole;
 
+import com.example.cosmetic.repository.impl.ProductRepositoryImpl;
+import com.example.cosmetic.service.impl.ProductServiceImpl;
+import com.example.cosmetic.view.product.ProductManagementPanel;
+import com.example.cosmetic.controller.ProductController;
+import com.example.cosmetic.controller.SalesController;
 // --- Import Module Loại Mỹ Phẩm ---
 import com.example.cosmetic.repository.impl.CategoryRepositoryImpl;
+import com.example.cosmetic.repository.impl.CustomerRepositoryImpl;
+import com.example.cosmetic.repository.impl.InvoiceRepositoryImpl;
 import com.example.cosmetic.service.impl.CategoryServiceImpl;
+import com.example.cosmetic.service.impl.CustomerServiceImpl;
+import com.example.cosmetic.service.impl.InvoiceServiceImpl;
 import com.example.cosmetic.view.category.CategoryManagementPanel;
+import com.example.cosmetic.view.invoice.SalesPanel;
 import com.example.cosmetic.controller.CategoryController;
 
 // --- Import Module Thương Hiệu ---
@@ -61,6 +71,7 @@ public class MainFrame extends JFrame {
         JMenuItem itemBrand = new JMenuItem("Thương Hiệu");
         JMenuItem itemSupplier = new JMenuItem("Nhà Cung Cấp");
         JMenuItem itemProduct = new JMenuItem("Sản Phẩm");
+        itemProduct.addActionListener(e -> openProductManagement());
 
         // Nhét Menu Con vào Menu Cha "Danh Mục"
         menuCatalog.add(itemCategory);
@@ -85,7 +96,31 @@ public class MainFrame extends JFrame {
         itemBrand.addActionListener(e -> openBrandManagement());
         itemSupplier.addActionListener(e -> openSupplierManagement());
     }
+  private void openSales() {
+    try {
+        // 1. Khởi tạo đủ bộ Repo
+        ProductRepositoryImpl pRepo = new ProductRepositoryImpl();
+        CustomerRepositoryImpl cRepo = new CustomerRepositoryImpl();
+        InvoiceRepositoryImpl iRepo = new InvoiceRepositoryImpl();
 
+        // 2. Khởi tạo đủ bộ Service
+        ProductServiceImpl pService = new ProductServiceImpl(pRepo);
+        CustomerServiceImpl cService = new CustomerServiceImpl(cRepo);
+        InvoiceServiceImpl iService = new InvoiceServiceImpl(iRepo);
+
+        // 3. Khởi tạo View
+        SalesPanel view = new SalesPanel();
+        
+        // 4. Khởi tạo Controller - KHÚC NÀY DỄ SAI NHẤT:
+        // Đảm bảo thứ tự: view, pService, cService, iService, currentStaff
+        new SalesController(view, pService, cService, iService, currentStaff);
+        
+        switchPanel(view);
+    } catch (Exception e) {
+        e.printStackTrace(); // In lỗi ra console để mình biết đường sửa
+        JOptionPane.showMessageDialog(this, "Lỗi khi mở màn hình bán hàng: " + e.getMessage());
+    }
+}
     // Hàm tiện ích: Xóa ruột cũ, thay ruột mới và vẽ lại màn hình
     private void switchPanel(JPanel newPanel) {
         centerPanel.removeAll();
@@ -121,4 +156,25 @@ public class MainFrame extends JFrame {
         new SupplierController(service, view,currentStaff);
         switchPanel(view);
     }
+ 
+    private void openProductManagement() {
+    // 1. Khởi tạo các Repository
+    ProductRepositoryImpl productRepo = new ProductRepositoryImpl();
+    CategoryRepositoryImpl categoryRepo = new CategoryRepositoryImpl();
+    BrandRepositoryImpl brandRepo = new BrandRepositoryImpl();
+    
+    // 2. Khởi tạo các Service tương ứng
+    ProductServiceImpl productService = new ProductServiceImpl(productRepo);
+    CategoryServiceImpl categoryService = new CategoryServiceImpl(categoryRepo);
+    BrandServiceImpl brandService = new BrandServiceImpl(brandRepo);
+    
+    // 3. Khởi tạo View
+    ProductManagementPanel view = new ProductManagementPanel();
+    
+    // 4. Khởi tạo Controller và truyền tất cả vào (bao gồm cả currentStaff để phân quyền)
+    new ProductController(productService, categoryService, brandService, view, currentStaff);
+    
+    // 5. Hiển thị lên màn hình chính
+    switchPanel(view);
+}
 }

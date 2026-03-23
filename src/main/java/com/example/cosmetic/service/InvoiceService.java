@@ -1,5 +1,7 @@
 package com.example.cosmetic.service;
 
-public class InvoiceService {
+import com.example.cosmetic.model.entity.Invoice;
 
+public interface InvoiceService {
+    void processCheckout(Invoice invoice) throws Exception;
 }
