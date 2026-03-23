@@ -1,42 +1,26 @@
-package com.example.cosmetic.model.entity;
+package com.example.cosmetic.model;
 
-import com.example.cosmetic.model.enums.StaffRole;
-import jakarta.persistence.*;
-
-@Entity
-@Table(name = "staffs")
 public class Staff {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
+    private String name;
+    private String role; // Quản lý hoặc nhân viên
 
-    @Column(name = "staff_code", unique = true, nullable = false)
-    private String staffCode;
+    public Staff() {
+    }
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
+    public Staff(String id, String name, String role) {
+        this.id = id;
+        this.name = name;
+        this.role = role;
+    }
 
-    @Column(unique = true, nullable = false)
-    private String username;
+    // Getter và Setter để Controller có thể lấy dữ liệu
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    @Column(nullable = false)
-    private String password;
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StaffRole role;
-
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getStaffCode() { return staffCode; }
-    public void setStaffCode(String staffCode) { this.staffCode = staffCode; }
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-    public StaffRole getRole() { return role; }
-    public void setRole(StaffRole role) { this.role = role; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }

@@ -1,5 +1,6 @@
 package com.example.cosmetic.service;
 
-public class StatisticsService {
-
+public interface StatisticsService {
+    // Khai báo các hàm logic ở đây
+    void calculateStatistics();
 }

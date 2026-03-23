@@ -26,6 +26,12 @@ public class Customer {
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
 
-    @Override
-    public String toString() { return name + " (" + phone + ")"; }
+   @Override
+public String toString() {
+    // Nếu có số điện thoại thì hiện kèm, không thì chỉ hiện tên
+    if (this.phone != null && !this.phone.isEmpty()) {
+        return this.name + " - " + this.phone;
+    }
+    return this.name;
+}
 }

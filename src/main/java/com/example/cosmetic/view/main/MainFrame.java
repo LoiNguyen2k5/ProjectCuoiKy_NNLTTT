@@ -2,126 +2,101 @@ package com.example.cosmetic.view.main;
 
 import com.example.cosmetic.model.entity.Staff;
 import com.example.cosmetic.model.enums.StaffRole;
-
-import com.example.cosmetic.repository.impl.ProductRepositoryImpl;
-import com.example.cosmetic.service.impl.ProductServiceImpl;
-import com.example.cosmetic.view.product.ProductManagementPanel;
-import com.example.cosmetic.controller.ProductController;
-import com.example.cosmetic.controller.SalesController;
-// --- Import Module Loại Mỹ Phẩm ---
-import com.example.cosmetic.repository.impl.CategoryRepositoryImpl;
-import com.example.cosmetic.repository.impl.CustomerRepositoryImpl;
-import com.example.cosmetic.repository.impl.InvoiceRepositoryImpl;
-import com.example.cosmetic.service.impl.CategoryServiceImpl;
-import com.example.cosmetic.service.impl.CustomerServiceImpl;
-import com.example.cosmetic.service.impl.InvoiceServiceImpl;
+import com.example.cosmetic.repository.impl.*;
+import com.example.cosmetic.service.impl.*;
 import com.example.cosmetic.view.category.CategoryManagementPanel;
-import com.example.cosmetic.view.invoice.SalesPanel;
-import com.example.cosmetic.controller.CategoryController;
-
-// --- Import Module Thương Hiệu ---
-import com.example.cosmetic.repository.impl.BrandRepositoryImpl;
-import com.example.cosmetic.service.impl.BrandServiceImpl;
 import com.example.cosmetic.view.brand.BrandManagementPanel;
-import com.example.cosmetic.controller.BrandController;
-
-// --- Import Module Nhà Cung Cấp ---
-import com.example.cosmetic.repository.impl.SupplierRepositoryImpl;
-import com.example.cosmetic.service.impl.SupplierServiceImpl;
 import com.example.cosmetic.view.supplier.SupplierManagementPanel;
-import com.example.cosmetic.controller.SupplierController;
+import com.example.cosmetic.view.product.ProductManagementPanel;
+import com.example.cosmetic.view.customer.CustomerManagementPanel;
+import com.example.cosmetic.view.dashboard.DashboardPanel;
+import com.example.cosmetic.view.statistics.StatisticsPanel;
+import com.example.cosmetic.view.invoice.SalesPanel;
+import com.example.cosmetic.controller.*;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class MainFrame extends JFrame {
     private Staff currentStaff;
-    private JPanel centerPanel; // Khay chứa trung tâm để tráo đổi các Panel
+    private JPanel centerPanel;
 
     public MainFrame(Staff currentStaff) {
         this.currentStaff = currentStaff;
         
-        setTitle("Hệ thống Quản lý Cửa hàng Mỹ phẩm - " + currentStaff.getFullName());
-        setSize(1000, 700);
+        setTitle("Hệ thống Quản lý Mỹ phẩm - " + currentStaff.getFullName());
+        setSize(1200, 800); 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Khởi tạo khay chứa trung tâm với câu chào mừng
         centerPanel = new JPanel(new BorderLayout());
-        JLabel lblWelcome = new JLabel("CHÀO MỪNG BẠN ĐẾN VỚI HỆ THỐNG (" + currentStaff.getRole() + ")", SwingConstants.CENTER);
-        lblWelcome.setFont(new Font("Arial", Font.BOLD, 20));
-        centerPanel.add(lblWelcome, BorderLayout.CENTER);
+        openDashboard(); // Mặc định khi vào là hiện Dashboard
 
-        // Gắn khay chứa vào chính giữa MainFrame
         add(centerPanel, BorderLayout.CENTER);
-
         setupMenuBasedOnRole();
     }
 
     private void setupMenuBasedOnRole() {
         JMenuBar menuBar = new JMenuBar();
         
-        JMenu menuSales = new JMenu("Bán Hàng");
-        JMenu menuCatalog = new JMenu("Danh Mục");
-        JMenu menuStats = new JMenu("Thống Kê");
+        // --- Menu Hệ Thống ---
+        JMenu menuSystem = new JMenu("Hệ Thống");
+        JMenuItem itemDashboard = new JMenuItem("Bảng điều khiển");
+        JMenuItem itemLogout = new JMenuItem("Đăng xuất");
+        menuSystem.add(itemDashboard);
+        menuSystem.add(itemLogout);
 
-        // --- Tạo các Menu Con (Item) ---
+        // --- Menu Bán Hàng ---
+        JMenu menuSales = new JMenu("Bán Hàng");
+        JMenuItem itemSales = new JMenuItem("Lập hóa đơn");
+        menuSales.add(itemSales);
+
+        // --- Menu Danh Mục ---
+        JMenu menuCatalog = new JMenu("Danh Mục");
         JMenuItem itemCategory = new JMenuItem("Loại Mỹ Phẩm");
         JMenuItem itemBrand = new JMenuItem("Thương Hiệu");
         JMenuItem itemSupplier = new JMenuItem("Nhà Cung Cấp");
+        JMenuItem itemCustomer = new JMenuItem("Khách Hàng");
         JMenuItem itemProduct = new JMenuItem("Sản Phẩm");
-        itemProduct.addActionListener(e -> openProductManagement());
-
-        // Nhét Menu Con vào Menu Cha "Danh Mục"
+        
         menuCatalog.add(itemCategory);
         menuCatalog.add(itemBrand);
         menuCatalog.add(itemSupplier);
-        menuCatalog.addSeparator(); // Đường kẻ ngang phân cách
+        menuCatalog.add(itemCustomer);
+        menuCatalog.addSeparator();
         menuCatalog.add(itemProduct);
 
+        menuBar.add(menuSystem);
         menuBar.add(menuSales);
         menuBar.add(menuCatalog);
-        menuBar.add(menuStats);
 
-        // Phân quyền: Nếu là nhân viên thường, ẩn tab Thống Kê đi
-        if (currentStaff.getRole() == StaffRole.STAFF) {
-            menuStats.setVisible(false);
+        // --- Menu Thống Kê (Chỉ Admin) ---
+        if (currentStaff.getRole() == StaffRole.ADMIN) {
+            JMenu menuStats = new JMenu("Thống Kê");
+            JMenuItem itemGeneralStats = new JMenuItem("Báo cáo doanh thu");
+            menuStats.add(itemGeneralStats);
+            menuBar.add(menuStats);
+            
+            itemGeneralStats.addActionListener(e -> openStatistics());
         }
 
         setJMenuBar(menuBar);
 
-        // --- GẮN SỰ KIỆN CLICK CHUYỂN TRANG CHO MENU ---
+        // Gắn sự kiện
+        itemDashboard.addActionListener(e -> openDashboard());
+        itemSales.addActionListener(e -> openSales());
         itemCategory.addActionListener(e -> openCategoryManagement());
         itemBrand.addActionListener(e -> openBrandManagement());
         itemSupplier.addActionListener(e -> openSupplierManagement());
+        itemCustomer.addActionListener(e -> openCustomerManagement());
+        itemProduct.addActionListener(e -> openProductManagement());
+        itemLogout.addActionListener(e -> {
+            this.dispose();
+            // Gọi lại màn hình Login nếu cần
+        });
     }
-  private void openSales() {
-    try {
-        // 1. Khởi tạo đủ bộ Repo
-        ProductRepositoryImpl pRepo = new ProductRepositoryImpl();
-        CustomerRepositoryImpl cRepo = new CustomerRepositoryImpl();
-        InvoiceRepositoryImpl iRepo = new InvoiceRepositoryImpl();
 
-        // 2. Khởi tạo đủ bộ Service
-        ProductServiceImpl pService = new ProductServiceImpl(pRepo);
-        CustomerServiceImpl cService = new CustomerServiceImpl(cRepo);
-        InvoiceServiceImpl iService = new InvoiceServiceImpl(iRepo);
-
-        // 3. Khởi tạo View
-        SalesPanel view = new SalesPanel();
-        
-        // 4. Khởi tạo Controller - KHÚC NÀY DỄ SAI NHẤT:
-        // Đảm bảo thứ tự: view, pService, cService, iService, currentStaff
-        new SalesController(view, pService, cService, iService, currentStaff);
-        
-        switchPanel(view);
-    } catch (Exception e) {
-        e.printStackTrace(); // In lỗi ra console để mình biết đường sửa
-        JOptionPane.showMessageDialog(this, "Lỗi khi mở màn hình bán hàng: " + e.getMessage());
-    }
-}
-    // Hàm tiện ích: Xóa ruột cũ, thay ruột mới và vẽ lại màn hình
     private void switchPanel(JPanel newPanel) {
         centerPanel.removeAll();
         centerPanel.add(newPanel, BorderLayout.CENTER);
@@ -129,15 +104,36 @@ public class MainFrame extends JFrame {
         centerPanel.repaint();
     }
 
-    // =======================================================
-    // CÁC HÀM KHỞI TẠO MVC CHO TỪNG MODULE
-    // =======================================================
+    private void openDashboard() {
+        StatisticsRepositoryImpl repo = new StatisticsRepositoryImpl();
+        StatisticsServiceImpl service = new StatisticsServiceImpl(repo);
+        DashboardPanel view = new DashboardPanel();
+        // Giả sử có DashboardController, nếu không thì chỉ hiện view
+        switchPanel(view);
+    }
+
+    private void openSales() {
+        try {
+            ProductRepositoryImpl pRepo = new ProductRepositoryImpl();
+            CustomerRepositoryImpl cRepo = new CustomerRepositoryImpl();
+            InvoiceRepositoryImpl iRepo = new InvoiceRepositoryImpl();
+            ProductServiceImpl pService = new ProductServiceImpl(pRepo);
+            CustomerServiceImpl cService = new CustomerServiceImpl(cRepo);
+            InvoiceServiceImpl iService = new InvoiceServiceImpl(iRepo);
+
+            SalesPanel view = new SalesPanel();
+            new SalesController(view, pService, cService, iService, currentStaff);
+            switchPanel(view);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Lỗi load Bán hàng: " + e.getMessage());
+        }
+    }
 
     private void openCategoryManagement() {
         CategoryRepositoryImpl repo = new CategoryRepositoryImpl();
         CategoryServiceImpl service = new CategoryServiceImpl(repo);
         CategoryManagementPanel view = new CategoryManagementPanel();
-        new CategoryController(service, view,currentStaff);
+        new CategoryController(service, view, currentStaff);
         switchPanel(view);
     }
 
@@ -145,7 +141,7 @@ public class MainFrame extends JFrame {
         BrandRepositoryImpl repo = new BrandRepositoryImpl();
         BrandServiceImpl service = new BrandServiceImpl(repo);
         BrandManagementPanel view = new BrandManagementPanel();
-        new BrandController(service, view,currentStaff);
+        new BrandController(service, view, currentStaff);
         switchPanel(view);
     }
 
@@ -153,28 +149,35 @@ public class MainFrame extends JFrame {
         SupplierRepositoryImpl repo = new SupplierRepositoryImpl();
         SupplierServiceImpl service = new SupplierServiceImpl(repo);
         SupplierManagementPanel view = new SupplierManagementPanel();
-        new SupplierController(service, view,currentStaff);
+        new SupplierController(service, view, currentStaff);
         switchPanel(view);
     }
- 
+
+    private void openCustomerManagement() {
+        CustomerRepositoryImpl repo = new CustomerRepositoryImpl();
+        CustomerServiceImpl service = new CustomerServiceImpl(repo);
+        CustomerManagementPanel view = new CustomerManagementPanel();
+        new CustomerController(service, view, currentStaff);
+        switchPanel(view);
+    }
+
     private void openProductManagement() {
-    // 1. Khởi tạo các Repository
-    ProductRepositoryImpl productRepo = new ProductRepositoryImpl();
-    CategoryRepositoryImpl categoryRepo = new CategoryRepositoryImpl();
-    BrandRepositoryImpl brandRepo = new BrandRepositoryImpl();
-    
-    // 2. Khởi tạo các Service tương ứng
-    ProductServiceImpl productService = new ProductServiceImpl(productRepo);
-    CategoryServiceImpl categoryService = new CategoryServiceImpl(categoryRepo);
-    BrandServiceImpl brandService = new BrandServiceImpl(brandRepo);
-    
-    // 3. Khởi tạo View
-    ProductManagementPanel view = new ProductManagementPanel();
-    
-    // 4. Khởi tạo Controller và truyền tất cả vào (bao gồm cả currentStaff để phân quyền)
-    new ProductController(productService, categoryService, brandService, view, currentStaff);
-    
-    // 5. Hiển thị lên màn hình chính
-    switchPanel(view);
-}
+        ProductRepositoryImpl pRepo = new ProductRepositoryImpl();
+        CategoryRepositoryImpl cRepo = new CategoryRepositoryImpl();
+        BrandRepositoryImpl bRepo = new BrandRepositoryImpl();
+        ProductServiceImpl pService = new ProductServiceImpl(pRepo);
+        CategoryServiceImpl cService = new CategoryServiceImpl(cRepo);
+        BrandServiceImpl bService = new BrandServiceImpl(bRepo);
+        ProductManagementPanel view = new ProductManagementPanel();
+        new ProductController(pService, cService, bService, view, currentStaff);
+        switchPanel(view);
+    }
+
+    private void openStatistics() {
+        StatisticsRepositoryImpl repo = new StatisticsRepositoryImpl();
+        StatisticsServiceImpl service = new StatisticsServiceImpl(repo);
+        StatisticsPanel view = new StatisticsPanel();
+        new StatisticsController(service, view);
+        switchPanel(view);
+    }
 }

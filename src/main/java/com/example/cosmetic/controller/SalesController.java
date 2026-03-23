@@ -29,97 +29,161 @@ public class SalesController {
     }
 
     private void loadInitialData() {
-        // Load sản phẩm vào ComboBox
-        productService.getAllProducts().forEach(p -> view.getCbProduct().addItem(p));
-        // Load khách hàng vào ComboBox (Tạm thời dùng JComboBox<Object> trong SalesPanel)
-        customerService.getAllCustomers().forEach(c -> view.getCbCustomer().addItem(c));
+        // Xóa dữ liệu cũ tránh trùng lặp nếu mở lại panel
+        view.getCbProduct().removeAllItems();
+        view.getCbCustomer().removeAllItems();
+
+        // Load sản phẩm
+        List<Product> products = productService.getAllProducts();
+        if (products != null) {
+            products.forEach(p -> view.getCbProduct().addItem(p));
+        }
+
+        // Load khách hàng (Sẽ hiển thị Tên - SĐT nhờ hàm toString() trong Entity Customer)
+        List<Customer> customers = customerService.getAllCustomers();
+        if (customers != null) {
+            customers.forEach(c -> view.getCbCustomer().addItem(c));
+        }
     }
 
     private void initEvents() {
-        // Sự kiện 1: Thêm vào giỏ hàng
+        // Sự kiện khi chọn Khách hàng: Tự động điền tên vào ô text bên cạnh
+        view.getCbCustomer().addActionListener(e -> {
+            Customer selected = (Customer) view.getCbCustomer().getSelectedItem();
+            if (selected != null) {
+                view.getTxtCustomerName().setText(selected.getName());
+            }
+        });
+
+        // Sự kiện 1: Thêm sản phẩm vào giỏ hàng
         view.getBtnAddCart().addActionListener(e -> addToCart());
 
-        // Sự kiện 2: Thanh toán
+        // Sự kiện 2: Thanh toán hóa đơn
         view.getBtnCheckout().addActionListener(e -> processCheckout());
     }
 
     private void addToCart() {
         Product selectedProd = (Product) view.getCbProduct().getSelectedItem();
+        if (selectedProd == null) return;
+
         int qty;
         try {
             qty = Integer.parseInt(view.getTxtQuantity().getText());
             if (qty <= 0) throw new Exception();
+            
+            // Kiểm tra sơ bộ số lượng tồn kho ngay tại View
+            if (qty > selectedProd.getQuantity()) {
+                JOptionPane.showMessageDialog(view, "Sản phẩm [" + selectedProd.getName() + "] không đủ hàng (Còn: " + selectedProd.getQuantity() + ")");
+                return;
+            }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(view, "Số lượng phải là số nguyên dương!");
             return;
         }
 
         DefaultTableModel model = view.getCartModel();
-        boolean exists = false;
+        boolean isExist = false;
         
-        // Check nếu sản phẩm đã có trong giỏ thì cộng dồn số lượng
+        // Kiểm tra nếu sản phẩm đã có trong giỏ thì cộng dồn số lượng
         for (int i = 0; i < model.getRowCount(); i++) {
-            if (model.getValueAt(i, 0).equals(selectedProd.getId())) {
-                int oldQty = (int) model.getValueAt(i, 2);
-                int newQty = oldQty + qty;
-                model.setValueAt(newQty, i, 2);
-                model.setValueAt(selectedProd.getPrice().multiply(new BigDecimal(newQty)), i, 4);
-                exists = true;
+            Long idInTable = (Long) model.getValueAt(i, 0);
+            if (idInTable.equals(selectedProd.getId())) {
+                int currentQty = (int) model.getValueAt(i, 3);
+                int newQty = currentQty + qty;
+                
+                // Kiểm tra lại tồn kho khi cộng dồn
+                if (newQty > selectedProd.getQuantity()) {
+                    JOptionPane.showMessageDialog(view, "Tổng số lượng trong giỏ vượt quá tồn kho!");
+                    return;
+                }
+                
+                model.setValueAt(newQty, i, 3);
+                BigDecimal newSubTotal = selectedProd.getPrice().multiply(new BigDecimal(newQty));
+                model.setValueAt(newSubTotal, i, 5);
+                isExist = true;
                 break;
             }
         }
 
-        if (!exists) {
-            BigDecimal total = selectedProd.getPrice().multiply(new BigDecimal(qty));
-            model.addRow(new Object[]{selectedProd.getId(), selectedProd.getName(), qty, selectedProd.getPrice(), total});
+        // Nếu chưa có thì thêm dòng mới
+        if (!isExist) {
+            BigDecimal subTotal = selectedProd.getPrice().multiply(new BigDecimal(qty));
+            model.addRow(new Object[]{
+                selectedProd.getId(),
+                selectedProd.getBarcode(),
+                selectedProd.getName(),
+                qty,
+                selectedProd.getPrice(),
+                subTotal
+            });
         }
-        calculateTotal();
+        
+        calculateGrandTotal();
     }
 
-    private void calculateTotal() {
-        BigDecimal grandTotal = BigDecimal.ZERO;
-        for (int i = 0; i < view.getCartModel().getRowCount(); i++) {
-            grandTotal = grandTotal.add((BigDecimal) view.getCartModel().getValueAt(i, 4));
+    private void calculateGrandTotal() {
+        BigDecimal total = BigDecimal.ZERO;
+        DefaultTableModel model = view.getCartModel();
+        for (int i = 0; i < model.getRowCount(); i++) {
+            total = total.add((BigDecimal) model.getValueAt(i, 5));
         }
-        view.getTxtTotal().setText(grandTotal.toString());
+        view.getTxtTotal().setText(total.toString());
     }
 
     private void processCheckout() {
-        if (view.getCartModel().getRowCount() == 0) {
-            JOptionPane.showMessageDialog(view, "Giỏ hàng trống!");
+        DefaultTableModel model = view.getCartModel();
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(view, "Giỏ hàng đang trống, không thể thanh toán!");
             return;
         }
 
+        Customer selectedCust = (Customer) view.getCbCustomer().getSelectedItem();
+        if (selectedCust == null) {
+            JOptionPane.showMessageDialog(view, "Vui lòng chọn khách hàng!");
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(view, "Xác nhận thanh toán hóa đơn này?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
         try {
+            // 1. Khởi tạo đối tượng Invoice
             Invoice invoice = new Invoice();
             invoice.setStaff(currentStaff);
-            invoice.setCustomer((Customer) view.getCbCustomer().getSelectedItem());
+            invoice.setCustomer(selectedCust);
             invoice.setTotalAmount(new BigDecimal(view.getTxtTotal().getText()));
 
+            // 2. Đóng gói danh sách InvoiceDetail
             List<InvoiceDetail> details = new ArrayList<>();
-            for (int i = 0; i < view.getCartModel().getRowCount(); i++) {
-                InvoiceDetail d = new InvoiceDetail();
-                // Tìm lại sản phẩm từ ID
-                Long pId = (Long) view.getCartModel().getValueAt(i, 0);
-                Product p = new Product(); p.setId(pId); // Dummy product để map ID
+            for (int i = 0; i < model.getRowCount(); i++) {
+                InvoiceDetail detail = new InvoiceDetail();
                 
-                d.setProduct(p);
-                d.setQuantity((int) view.getCartModel().getValueAt(i, 2));
-                d.setPrice((BigDecimal) view.getCartModel().getValueAt(i, 3));
-                d.setInvoice(invoice);
-                details.add(d);
+                // Lấy sản phẩm từ ID
+                Long productId = (Long) model.getValueAt(i, 0);
+                Product p = new Product(); 
+                p.setId(productId); // Chỉ cần set ID để Hibernate map khóa ngoại
+                
+                detail.setProduct(p);
+                detail.setQuantity((int) model.getValueAt(i, 3));
+                detail.setPrice((BigDecimal) model.getValueAt(i, 4));
+                detail.setInvoice(invoice);
+                details.add(detail);
             }
             invoice.setDetails(details);
 
-            // Gọi Service để thực hiện Transaction (Lưu + Trừ kho)
+            // 3. Gọi Service thực hiện lưu DB và trừ kho (Transaction)
             invoiceService.processCheckout(invoice);
             
-            JOptionPane.showMessageDialog(view, "Thanh toán thành công! Kho đã được cập nhật.");
-            view.getCartModel().setRowCount(0);
+            JOptionPane.showMessageDialog(view, "Thanh toán thành công! Hóa đơn đã được lưu và trừ kho.");
+            
+            // 4. Làm mới giỏ hàng
+            model.setRowCount(0);
             view.getTxtTotal().setText("0");
-
+            view.getTxtCustomerName().setText("");
+            
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(view, "Lỗi thanh toán: " + ex.getMessage());
+            JOptionPane.showMessageDialog(view, "Lỗi khi xử lý thanh toán: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 }
